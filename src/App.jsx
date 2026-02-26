@@ -7,6 +7,8 @@ export default function App() {
   const [error, setError] = useState('')
   const [metaUser, setMetaUser] = useState(null)
   const [pages, setPages] = useState([])
+  const [pageError, setPageError] = useState('')
+  const [syncing, setSyncing] = useState(false)
   const [user, setUser] = useState(null)
   const [form, setForm] = useState({ Email: '', Password: '' })
   const [loggingIn, setLoggingIn] = useState(false)
@@ -94,22 +96,34 @@ export default function App() {
         return
       }
       setMetaUser(data)
-      // Sync pages immediately after connecting
-      try {
-        const pagesRes = await fetch(`${API_URL}/api/v1/connect/meta/page`, {
-          method: 'POST',
-          credentials: 'include',
-        })
-        if (pagesRes.ok) {
-          const pagesData = await pagesRes.json()
-          setPages(pagesData.accounts || [])
-        }
-      } catch { /* non-fatal */ }
+      await syncPages()
       setStatus('success')
     } catch {
       setError('Could not reach the server.')
       setStatus('idle')
     }
+  }
+
+  async function syncPages() {
+    setSyncing(true)
+    setPageError('')
+    try {
+      const res = await fetch(`${API_URL}/api/v1/connect/meta/page`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setPageError(data?.message || 'Could not load pages.')
+      } else {
+        const accounts = data.accounts || []
+        setPages(accounts)
+        if (accounts.length === 0) setPageError('No Facebook Pages found on this account.')
+      }
+    } catch {
+      setPageError('Could not reach the server.')
+    }
+    setSyncing(false)
   }
 
   async function handleConnect() {
@@ -190,7 +204,8 @@ export default function App() {
         <>
           <h1>You're connected</h1>
           {metaUser && <p className="sub">Logged in as <strong>{metaUser.meta_user_name}</strong></p>}
-          {pages.length > 0 && (
+          {syncing && <p className="hint">Loading pages...</p>}
+          {!syncing && pages.length > 0 && (
             <ul className="page-list">
               {pages.map(p => (
                 <li key={p.account_id} className="page-item">
@@ -209,6 +224,10 @@ export default function App() {
                 </li>
               ))}
             </ul>
+          )}
+          {!syncing && pageError && <p className="err">{pageError}</p>}
+          {!syncing && (
+            <button className="btn-text" onClick={syncPages}>Retry sync</button>
           )}
           <button className="btn-text" onClick={() => { setStatus('idle'); setError('') }}>
             Connect another account
