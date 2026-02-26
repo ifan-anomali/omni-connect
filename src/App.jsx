@@ -11,6 +11,7 @@ export default function App() {
   const [pageError, setPageError] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
   const [user, setUser] = useState(null)
   const [form, setForm] = useState({ Email: '', Password: '' })
   const [loggingIn, setLoggingIn] = useState(false)
@@ -173,6 +174,22 @@ export default function App() {
     )
   }
 
+  async function handleDisconnect() {
+    setDisconnecting(true)
+    try {
+      await fetch(`${API_URL}/api/v1/connect/meta/user/detail`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+    } catch { /* non-fatal */ }
+    setDisconnecting(false)
+    setPages([])
+    setSelected([])
+    setMetaUser(null)
+    setStatus('idle')
+    setError('')
+  }
+
   async function handleConnect() {
     setStatus('loading')
     setError('')
@@ -313,6 +330,9 @@ export default function App() {
 
           <button className="btn-text" onClick={() => { setStatus('idle'); setError('') }}>
             {status === 'manage' ? 'Back' : 'Connect another account'}
+          </button>
+          <button className="btn-disconnect" onClick={handleDisconnect} disabled={disconnecting}>
+            {disconnecting ? 'Disconnecting...' : 'Disconnect Facebook'}
           </button>
         </>
       )}
