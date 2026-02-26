@@ -3,12 +3,14 @@ import { useState, useEffect } from 'react'
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.omni7.io'
 
 export default function App() {
-  const [status, setStatus] = useState('checking') // checking | login | idle | loading | success | error
+  const [status, setStatus] = useState('checking') // checking | login | idle | loading | success | manage
   const [error, setError] = useState('')
   const [metaUser, setMetaUser] = useState(null)
   const [pages, setPages] = useState([])
+  const [selected, setSelected] = useState([])
   const [pageError, setPageError] = useState('')
   const [syncing, setSyncing] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [user, setUser] = useState(null)
   const [form, setForm] = useState({ Email: '', Password: '' })
   const [loggingIn, setLoggingIn] = useState(false)
@@ -96,7 +98,7 @@ export default function App() {
         return
       }
       setMetaUser(data)
-      await syncPages()
+      await syncPages(true)
       setStatus('success')
     } catch {
       setError('Could not reach the server.')
@@ -104,7 +106,7 @@ export default function App() {
     }
   }
 
-  async function syncPages() {
+  async function syncPages(selectAll = false) {
     setSyncing(true)
     setPageError('')
     try {
@@ -118,12 +120,57 @@ export default function App() {
       } else {
         const accounts = data.accounts || []
         setPages(accounts)
+        setSelected(selectAll
+          ? accounts.map(a => a.account_id)
+          : accounts.filter(a => a.is_active).map(a => a.account_id)
+        )
         if (accounts.length === 0) setPageError('No Facebook Pages found on this account.')
       }
     } catch {
       setPageError('Could not reach the server.')
     }
     setSyncing(false)
+  }
+
+  async function loadPages() {
+    setSyncing(true)
+    setPageError('')
+    try {
+      const res = await fetch(`${API_URL}/api/v1/connect/meta/page`, {
+        credentials: 'include',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setPageError(data?.message || 'Could not load pages.')
+      } else {
+        const accounts = data.accounts || []
+        setPages(accounts)
+        setSelected(accounts.filter(a => a.is_active).map(a => a.account_id))
+        if (accounts.length === 0) setPageError('No pages connected yet.')
+      }
+    } catch {
+      setPageError('Could not reach the server.')
+    }
+    setSyncing(false)
+  }
+
+  async function saveSelection() {
+    setSaving(true)
+    try {
+      await fetch(`${API_URL}/api/v1/connect/meta/page`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountIds: selected }),
+      })
+    } catch { /* non-fatal */ }
+    setSaving(false)
+  }
+
+  function togglePage(id) {
+    setSelected(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
   }
 
   async function handleConnect() {
@@ -145,6 +192,11 @@ export default function App() {
       setError('Could not reach the server.')
       setStatus('idle')
     }
+  }
+
+  async function openManage() {
+    setStatus('manage')
+    await loadPages()
   }
 
   if (status === 'checking') return null
@@ -193,6 +245,9 @@ export default function App() {
             <span className="fb-f">f</span>
             Continue with Facebook
           </button>
+          <button className="btn-text" onClick={openManage}>
+            Manage connected pages
+          </button>
         </>
       )}
 
@@ -200,37 +255,64 @@ export default function App() {
         <p className="hint">Connecting...</p>
       )}
 
-      {status === 'success' && (
+      {(status === 'success' || status === 'manage') && (
         <>
-          <h1>You're connected</h1>
-          {metaUser && <p className="sub">Logged in as <strong>{metaUser.meta_user_name}</strong></p>}
+          {status === 'success' && (
+            <>
+              <h1>You're connected</h1>
+              {metaUser && <p className="sub">Logged in as <strong>{metaUser.meta_user_name}</strong></p>}
+            </>
+          )}
+          {status === 'manage' && (
+            <>
+              <h1>Manage pages</h1>
+              <p className="sub">
+                Signed in as <strong>{user?.firstName} {user?.lastName}</strong>
+              </p>
+            </>
+          )}
+
           {syncing && <p className="hint">Loading pages...</p>}
+
           {!syncing && pages.length > 0 && (
-            <ul className="page-list">
-              {pages.map(p => (
-                <li key={p.account_id} className="page-item">
-                  <div className="page-header">
-                    <span className="page-name">{p.account_name || p.account_id}</span>
-                    <span className="page-platform">{p.platform}</span>
-                  </div>
-                  {p.account_token && (
-                    <div className="page-token-row">
-                      <span className="page-token">{p.account_token}</span>
-                      <button className="btn-copy" onClick={() => navigator.clipboard.writeText(p.account_token)}>
-                        Copy
-                      </button>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="page-list">
+                {pages.map(p => (
+                  <li key={p.account_id} className="page-item">
+                    <label className="page-row">
+                      <div className="page-info">
+                        <span className="page-name">{p.account_name || p.account_id}</span>
+                        <span className="page-platform">{p.platform}</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        className="page-check"
+                        checked={selected.includes(p.account_id)}
+                        onChange={() => togglePage(p.account_id)}
+                      />
+                    </label>
+                    {p.account_token && (
+                      <div className="page-token-row">
+                        <span className="page-token">{p.account_token}</span>
+                        <button className="btn-copy" onClick={() => navigator.clipboard.writeText(p.account_token)}>
+                          Copy
+                        </button>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <button className="btn-primary" onClick={saveSelection} disabled={saving}>
+                {saving ? 'Saving...' : 'Save selection'}
+              </button>
+            </>
           )}
-          {!syncing && pageError && <p className="err">{pageError}</p>}
-          {!syncing && (
-            <button className="btn-text" onClick={syncPages}>Retry sync</button>
-          )}
+
+          {!syncing && pageError && <p className="err" style={{ marginTop: 12 }}>{pageError}</p>}
+          {!syncing && <button className="btn-text" onClick={() => syncPages(false)}>Resync pages</button>}
+
           <button className="btn-text" onClick={() => { setStatus('idle'); setError('') }}>
-            Connect another account
+            {status === 'manage' ? 'Back' : 'Connect another account'}
           </button>
         </>
       )}
