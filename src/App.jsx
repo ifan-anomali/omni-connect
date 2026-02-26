@@ -6,6 +6,7 @@ export default function App() {
   const [status, setStatus] = useState('checking') // checking | login | idle | loading | success | error
   const [error, setError] = useState('')
   const [metaUser, setMetaUser] = useState(null)
+  const [pages, setPages] = useState([])
   const [user, setUser] = useState(null)
   const [form, setForm] = useState({ Email: '', Password: '' })
   const [loggingIn, setLoggingIn] = useState(false)
@@ -93,6 +94,17 @@ export default function App() {
         return
       }
       setMetaUser(data)
+      // Sync pages immediately after connecting
+      try {
+        const pagesRes = await fetch(`${API_URL}/api/v1/connect/meta/page`, {
+          method: 'POST',
+          credentials: 'include',
+        })
+        if (pagesRes.ok) {
+          const pagesData = await pagesRes.json()
+          setPages(pagesData.accounts || [])
+        }
+      } catch { /* non-fatal */ }
       setStatus('success')
     } catch {
       setError('Could not reach the server.')
@@ -178,6 +190,16 @@ export default function App() {
         <>
           <h1>You're connected</h1>
           {metaUser && <p className="sub">Logged in as <strong>{metaUser.meta_user_name}</strong></p>}
+          {pages.length > 0 && (
+            <ul className="page-list">
+              {pages.map(p => (
+                <li key={p.account_id} className="page-item">
+                  <span className="page-name">{p.account_name || p.account_id}</span>
+                  <span className="page-platform">{p.platform}</span>
+                </li>
+              ))}
+            </ul>
+          )}
           <button className="btn-text" onClick={() => { setStatus('idle'); setError('') }}>
             Connect another account
           </button>
