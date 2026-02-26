@@ -3,27 +3,74 @@ import { useState, useEffect } from 'react'
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.omni7.io'
 
 export default function App() {
-  const [status, setStatus] = useState('idle')
-  const [message, setMessage] = useState('')
+  const [status, setStatus] = useState('checking') // checking | login | idle | loading | success | error
+  const [error, setError] = useState('')
   const [metaUser, setMetaUser] = useState(null)
+  const [form, setForm] = useState({ Email: '', Password: '' })
+  const [loggingIn, setLoggingIn] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const code = params.get('code')
-    const error = params.get('error')
+    const oauthError = params.get('error')
 
-    if (error) {
-      setStatus('error')
-      setMessage('Authorisation was cancelled.')
+    if (oauthError) {
       window.history.replaceState({}, '', window.location.pathname)
+      checkSession().then(loggedIn => {
+        if (loggedIn) { setStatus('idle'); setError('Authorisation was cancelled.') }
+      })
       return
     }
 
     if (code) {
-      setStatus('loading')
-      handleCallback(code)
+      window.history.replaceState({}, '', window.location.pathname)
+      checkSession().then(loggedIn => {
+        if (loggedIn) {
+          setStatus('loading')
+          handleCallback(code)
+        }
+      })
+      return
     }
+
+    checkSession().then(loggedIn => {
+      setStatus(loggedIn ? 'idle' : 'login')
+    })
   }, [])
+
+  async function checkSession() {
+    try {
+      const res = await fetch(`${API_URL}/api/v1/auth/user/detail`, {
+        credentials: 'include',
+      })
+      return res.ok
+    } catch {
+      return false
+    }
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault()
+    setLoggingIn(true)
+    setError('')
+    try {
+      const res = await fetch(`${API_URL}/api/v1/auth/public/login`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) {
+        setError('Incorrect email or password.')
+        setLoggingIn(false)
+        return
+      }
+      setStatus('idle')
+    } catch {
+      setError('Could not reach the server.')
+    }
+    setLoggingIn(false)
+  }
 
   async function handleCallback(code) {
     try {
@@ -33,52 +80,79 @@ export default function App() {
       )
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setStatus('error')
-        setMessage(data?.message || 'Something went wrong. Please try again.')
+        setError(data?.message || 'Something went wrong.')
+        setStatus('idle')
         return
       }
       setMetaUser(data)
       setStatus('success')
-      window.history.replaceState({}, '', window.location.pathname)
     } catch {
-      setStatus('error')
-      setMessage('Could not reach the server. Check your connection.')
+      setError('Could not reach the server.')
+      setStatus('idle')
     }
   }
 
   async function handleConnect() {
     setStatus('loading')
+    setError('')
     try {
       const res = await fetch(`${API_URL}/api/v1/connect/user/meta`, {
         method: 'POST',
         credentials: 'include',
       })
-      if (res.status === 401) {
-        setStatus('error')
-        setMessage('You need to be logged in first.')
-        return
-      }
       if (!res.ok) {
-        setStatus('error')
-        setMessage('Something went wrong. Please try again.')
+        setError('Something went wrong. Please try again.')
+        setStatus('idle')
         return
       }
       const data = await res.json()
       window.location.href = data.url
     } catch {
-      setStatus('error')
-      setMessage('Could not reach the server. Check your connection.')
+      setError('Could not reach the server.')
+      setStatus('idle')
     }
   }
+
+  if (status === 'checking') return null
 
   return (
     <div className="wrap">
       <p className="wordmark">omni</p>
 
+      {status === 'login' && (
+        <>
+          <h1>Sign in</h1>
+          <p className="sub">Sign in to your Omni account to continue.</p>
+          <form onSubmit={handleLogin}>
+            <input
+              className="input"
+              type="email"
+              placeholder="Email"
+              value={form.Email}
+              onChange={e => setForm(f => ({ ...f, Email: e.target.value }))}
+              required
+            />
+            <input
+              className="input"
+              type="password"
+              placeholder="Password"
+              value={form.Password}
+              onChange={e => setForm(f => ({ ...f, Password: e.target.value }))}
+              required
+            />
+            {error && <p className="err">{error}</p>}
+            <button className="btn-primary" type="submit" disabled={loggingIn}>
+              {loggingIn ? 'Signing in...' : 'Sign in'}
+            </button>
+          </form>
+        </>
+      )}
+
       {status === 'idle' && (
         <>
           <h1>Connect Facebook</h1>
           <p className="sub">Link your Facebook & Instagram account to get started.</p>
+          {error && <p className="err">{error}</p>}
           <button className="btn-fb" onClick={handleConnect}>
             <span className="fb-f">f</span>
             Continue with Facebook
@@ -94,15 +168,9 @@ export default function App() {
         <>
           <h1>You're connected</h1>
           {metaUser && <p className="sub">Logged in as <strong>{metaUser.meta_user_name}</strong></p>}
-          <button className="btn-text" onClick={() => setStatus('idle')}>Connect another account</button>
-        </>
-      )}
-
-      {status === 'error' && (
-        <>
-          <h1>Something went wrong</h1>
-          <p className="sub">{message}</p>
-          <button className="btn-fb" onClick={() => setStatus('idle')}>Try again</button>
+          <button className="btn-text" onClick={() => { setStatus('idle'); setError('') }}>
+            Connect another account
+          </button>
         </>
       )}
     </div>

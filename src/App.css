@@ -69,6 +69,22 @@ h1 {
   font-family: Georgia, serif;
 }
 
+.btn-primary {
+  width: 100%;
+  padding: 13px 18px;
+  background: #111;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  margin-top: 4px;
+}
+.btn-primary:hover { opacity: 0.8; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .btn-text {
   background: none;
   border: none;
@@ -79,4 +95,23 @@ h1 {
   margin-top: 8px;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.input {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 15px;
+  margin-bottom: 10px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input:focus { border-color: #111; }
+
+.err {
+  font-size: 13px;
+  color: #c62828;
+  margin-bottom: 10px;
 }
