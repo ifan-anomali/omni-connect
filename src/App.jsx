@@ -6,6 +6,7 @@ export default function App() {
   const [status, setStatus] = useState('checking') // checking | login | idle | loading | success | error
   const [error, setError] = useState('')
   const [metaUser, setMetaUser] = useState(null)
+  const [user, setUser] = useState(null)
   const [form, setForm] = useState({ Email: '', Password: '' })
   const [loggingIn, setLoggingIn] = useState(false)
 
@@ -43,7 +44,12 @@ export default function App() {
       const res = await fetch(`${API_URL}/api/v1/auth/user/detail`, {
         credentials: 'include',
       })
-      return res.ok
+      if (res.ok) {
+        const data = await res.json()
+        setUser(data)
+        return true
+      }
+      return false
     } catch {
       return false
     }
@@ -65,6 +71,8 @@ export default function App() {
         setLoggingIn(false)
         return
       }
+      const data = await res.json()
+      setUser(data)
       setStatus('idle')
     } catch {
       setError('Could not reach the server.')
@@ -151,7 +159,9 @@ export default function App() {
       {status === 'idle' && (
         <>
           <h1>Connect Facebook</h1>
-          <p className="sub">Link your Facebook & Instagram account to get started.</p>
+          <p className="sub">
+            Signed in as <strong>{user?.firstName} {user?.lastName}</strong> · {user?.email}
+          </p>
           {error && <p className="err">{error}</p>}
           <button className="btn-fb" onClick={handleConnect}>
             <span className="fb-f">f</span>
