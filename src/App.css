@@ -126,15 +126,19 @@ h1 {
 }
 
 .page-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 11px 14px;
   font-size: 14px;
   border-bottom: 1px solid #f0f0f0;
 }
 
 .page-item:last-child { border-bottom: none; }
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
 
 .page-name { font-weight: 500; }
 
@@ -143,3 +147,30 @@ h1 {
   color: #999;
   text-transform: capitalize;
 }
+
+.page-token-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-token {
+  font-size: 11px;
+  color: #888;
+  font-family: monospace;
+  word-break: break-all;
+  flex: 1;
+}
+
+.btn-copy {
+  flex-shrink: 0;
+  background: none;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 5px;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  color: #555;
+}
+
+.btn-copy:hover { border-color: #111; color: #111; }

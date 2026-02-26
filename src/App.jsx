@@ -194,8 +194,18 @@ export default function App() {
             <ul className="page-list">
               {pages.map(p => (
                 <li key={p.account_id} className="page-item">
-                  <span className="page-name">{p.account_name || p.account_id}</span>
-                  <span className="page-platform">{p.platform}</span>
+                  <div className="page-header">
+                    <span className="page-name">{p.account_name || p.account_id}</span>
+                    <span className="page-platform">{p.platform}</span>
+                  </div>
+                  {p.account_token && (
+                    <div className="page-token-row">
+                      <span className="page-token">{p.account_token}</span>
+                      <button className="btn-copy" onClick={() => navigator.clipboard.writeText(p.account_token)}>
+                        Copy
+                      </button>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
