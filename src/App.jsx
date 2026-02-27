@@ -106,6 +106,7 @@ export default function App() {
         method: 'POST',
         credentials: 'include',
       })
+      if (res.status === 401) { setUser(null); setError('Your session has expired. Please sign in again.'); setStatus('login'); return }
       if (!res.ok) { setError('Something went wrong. Please try again.'); setStatus('idle'); return }
       const data = await res.json()
       window.location.href = data.url
