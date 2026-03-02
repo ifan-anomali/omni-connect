@@ -44,6 +44,76 @@ h1 {
   color: #999;
 }
 
+/* ── Platform cards (home screen) ──────────────────────────────────────── */
+
+.platform-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  text-decoration: none;
+}
+
+.platform-card:hover { border-color: #bbb; background: #fafafa; }
+
+.platform-meta   { border-left: 3px solid #1877F2; }
+.platform-google { border-left: 3px solid #4285F4; }
+
+.platform-card-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.platform-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.platform-icon-fb {
+  background: #1877F2;
+  color: #fff;
+  font-family: Georgia, serif;
+  font-size: 18px;
+}
+
+.platform-icon-google {
+  background: #f1f3f4;
+  color: #4285F4;
+  font-family: Arial, sans-serif;
+  font-size: 17px;
+  border: 1.5px solid #e0e0e0;
+}
+
+.platform-name   { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.platform-detail { font-size: 12px; color: #888; }
+
+/* Status dot */
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot.on   { background: #2e7d32; }
+.status-dot.warn { background: #e65100; }
+.status-dot.off  { background: #d0d0d0; }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
 .btn-fb {
   display: flex;
   align-items: center;
@@ -58,15 +128,43 @@ h1 {
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.15s;
+  margin-bottom: 12px;
 }
-
 .btn-fb:hover { opacity: 0.88; }
+.btn-fb:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .fb-f {
   font-size: 18px;
   font-weight: 800;
   line-height: 1;
   font-family: Georgia, serif;
+}
+
+.btn-google {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 18px;
+  background: #fff;
+  color: #3c4043;
+  border: 1.5px solid #dadce0;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  margin-bottom: 12px;
+}
+.btn-google:hover { background: #f8f9fa; border-color: #bbb; }
+.btn-google:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.google-g {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  font-family: Arial, sans-serif;
+  color: #4285F4;
 }
 
 .btn-primary {
@@ -95,7 +193,36 @@ h1 {
   margin-top: 8px;
   text-decoration: underline;
   text-underline-offset: 3px;
+  display: block;
 }
+
+.btn-back {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 20px;
+  display: block;
+}
+.btn-back:hover { color: #111; }
+
+.btn-disconnect {
+  background: none;
+  border: none;
+  color: #c62828;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 16px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  display: block;
+}
+.btn-disconnect:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Form ────────────────────────────────────────────────────────────────── */
 
 .input {
   display: block;
@@ -116,6 +243,8 @@ h1 {
   margin-bottom: 10px;
 }
 
+/* ── Page / Location list ─────────────────────────────────────────────────── */
+
 .page-list {
   list-style: none;
   margin: 0 0 24px;
@@ -130,7 +259,6 @@ h1 {
   font-size: 14px;
   border-bottom: 1px solid #f0f0f0;
 }
-
 .page-item:last-child { border-bottom: none; }
 
 .page-row {
@@ -149,13 +277,8 @@ h1 {
   flex: 1;
 }
 
-.page-name { font-weight: 500; }
-
-.page-platform {
-  font-size: 12px;
-  color: #999;
-  text-transform: capitalize;
-}
+.page-name     { font-weight: 500; }
+.page-platform { font-size: 12px; color: #999; text-transform: capitalize; }
 
 .page-check {
   width: 16px;
@@ -169,6 +292,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-top: 6px;
 }
 
 .page-token {
@@ -189,19 +313,4 @@ h1 {
   cursor: pointer;
   color: #555;
 }
-
 .btn-copy:hover { border-color: #111; color: #111; }
-
-.btn-disconnect {
-  background: none;
-  border: none;
-  color: #c62828;
-  font-size: 13px;
-  cursor: pointer;
-  padding: 0;
-  margin-top: 16px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  display: block;
-}
-.btn-disconnect:disabled { opacity: 0.5; cursor: not-allowed; }

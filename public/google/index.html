@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Omni — Connecting Google...</title>
+    <script>
+      // Google OAuth redirects here: /omni-connect/google?code=...
+      // This page forwards to the React app root with ?provider=google&... preserved.
+      (function () {
+        var params = new URLSearchParams(window.location.search)
+        params.set('provider', 'google')
+        var root = window.location.pathname.replace(/\/google\/?$/, '/')
+        window.location.replace(root + '?' + params.toString())
+      })()
+    </script>
+  </head>
+  <body></body>
+</html>
