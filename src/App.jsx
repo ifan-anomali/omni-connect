@@ -124,7 +124,7 @@ export default function App() {
 
   async function checkMetaStatus() {
     try {
-      const res  = await fetch(`${API_URL}/api/v1/connect/meta/user/status`, { credentials: 'include' })
+      const res  = await fetch(`${API_URL}/api/v0/connect/meta/user/status`, { credentials: 'include' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.is_connected) { setMetaStatus(null); setMetaSub('idle'); return }
       setMetaStatus(data)
@@ -152,7 +152,7 @@ export default function App() {
     setMetaSub('loading')
     setError('')
     try {
-      const res = await fetch(`${API_URL}/api/v1/connect/user/meta`, {
+      const res = await fetch(`${API_URL}/api/v0/connect/user/meta`, {
         method: 'POST',
         credentials: 'include',
       })
@@ -166,7 +166,7 @@ export default function App() {
   async function handleMetaCallback(code) {
     try {
       const res  = await fetch(
-        `${API_URL}/api/v1/connect/meta/user/detail?token=${encodeURIComponent(code)}`,
+        `${API_URL}/api/v0/connect/meta/user/detail?token=${encodeURIComponent(code)}`,
         { method: 'POST', credentials: 'include' }
       )
       const data = await res.json().catch(() => ({}))
@@ -182,7 +182,7 @@ export default function App() {
     setSyncing(true)
     setPageError('')
     try {
-      const res  = await fetch(`${API_URL}/api/v1/connect/meta/page`, {
+      const res  = await fetch(`${API_URL}/api/v0/connect/meta/page`, {
         method: 'POST',
         credentials: 'include',
       })
@@ -206,7 +206,7 @@ export default function App() {
     setSyncing(true)
     setPageError('')
     try {
-      const res  = await fetch(`${API_URL}/api/v1/connect/meta/page`, { credentials: 'include' })
+      const res  = await fetch(`${API_URL}/api/v0/connect/meta/page`, { credentials: 'include' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setPageError(data?.message || 'Could not load pages.')
@@ -223,7 +223,7 @@ export default function App() {
   async function savePageSelection() {
     setSaving(true)
     try {
-      await fetch(`${API_URL}/api/v1/connect/meta/page`, {
+      await fetch(`${API_URL}/api/v0/connect/meta/page`, {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -240,7 +240,7 @@ export default function App() {
   async function handleMetaDisconnect() {
     setDisconnecting(true)
     try {
-      await fetch(`${API_URL}/api/v1/connect/meta/user/detail`, {
+      await fetch(`${API_URL}/api/v0/connect/meta/user/detail`, {
         method: 'DELETE',
         credentials: 'include',
       })
