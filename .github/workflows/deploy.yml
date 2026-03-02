@@ -29,7 +29,7 @@ jobs:
       - run: npm run build
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
-          VITE_API_URL: https://api.omni7.io
+          VITE_API_URL: https://dev-api.omni7.io
 
       - uses: actions/upload-pages-artifact@v3
         with:
