@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.omni7.io'
+const API_URL = import.meta.env.VITE_API_URL || 'https://dev-api.omni7.io'
 
 export default function App() {
   // ── Top-level screen ──────────────────────────────────────────────────────
