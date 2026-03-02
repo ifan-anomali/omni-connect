@@ -91,7 +91,7 @@ export default function App() {
 
   async function checkSession() {
     try {
-      const res = await fetch(`${API_URL}/api/v1/auth/user/detail`, { credentials: 'include' })
+      const res = await fetch(`${API_URL}/api/v0/auth/user/detail`, { credentials: 'include' })
       if (res.ok) { setUser(await res.json()); return true }
       return false
     } catch { return false }
@@ -102,7 +102,7 @@ export default function App() {
     setLoggingIn(true)
     setError('')
     try {
-      const res = await fetch(`${API_URL}/api/v1/auth/public/login`, {
+      const res = await fetch(`${API_URL}/api/v0/auth/public/login`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
