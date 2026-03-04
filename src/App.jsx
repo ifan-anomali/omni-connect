@@ -10,6 +10,7 @@ export default function App() {
   // ── Meta ──────────────────────────────────────────────────────────────────
   // idle | loading | success
   const [metaSub, setMetaSub]         = useState('idle')
+  const [metaMsg, setMetaMsg]         = useState('')
   const [metaUser, setMetaUser]       = useState(null)   // { user_token, meta_user_name }
   const [pages, setPages]             = useState([])
   const [pageError, setPageError]     = useState('')
@@ -18,6 +19,7 @@ export default function App() {
   // ── Google ────────────────────────────────────────────────────────────────
   // idle | loading | success
   const [googleSub, setGoogleSub]     = useState('idle')
+  const [googleMsg, setGoogleMsg]     = useState('')
   const [googleUser, setGoogleUser]   = useState(null)   // { access_token, email }
   const [locations, setLocations]     = useState([])
   const [locationError, setLocationError] = useState('')
@@ -51,6 +53,7 @@ export default function App() {
 
   async function handleMetaConnect() {
     setMetaSub('loading')
+    setMetaMsg('Connecting to Facebook...')
     setError('')
     try {
       const res = await fetch(`${API_URL}/api/v0/connect/user/meta`, { method: 'POST' })
@@ -61,6 +64,7 @@ export default function App() {
   }
 
   async function handleMetaCallback(code) {
+    setMetaMsg('Verifying with Facebook...')
     try {
       const res  = await fetch(
         `${API_URL}/api/v0/connect/meta/user/detail?token=${encodeURIComponent(code)}`,
@@ -70,6 +74,7 @@ export default function App() {
       if (!res.ok) { setError(data?.message || 'Something went wrong.'); setMetaSub('idle'); return }
 
       setMetaUser(data)
+      setMetaMsg('Please wait, we are getting all your pages...')
       await fetchPages(data.user_token)
       setMetaSub('success')
     } catch { setError('Could not reach the server.'); setMetaSub('idle') }
@@ -98,6 +103,7 @@ export default function App() {
 
   async function handleGoogleConnect() {
     setGoogleSub('loading')
+    setGoogleMsg('Connecting to Google...')
     setError('')
     try {
       const res = await fetch(`${API_URL}/api/v0/connect/user/google`, { method: 'POST' })
@@ -108,6 +114,7 @@ export default function App() {
   }
 
   async function handleGoogleCallback(code) {
+    setGoogleMsg('Verifying with Google...')
     try {
       const res  = await fetch(
         `${API_URL}/api/v0/connect/google/user/detail?token=${encodeURIComponent(code)}`,
@@ -117,6 +124,7 @@ export default function App() {
       if (!res.ok) { setError(data?.message || 'Something went wrong.'); setGoogleSub('idle'); return }
 
       setGoogleUser(data)
+      setGoogleMsg('Please wait, we are getting all your locations...')
       await fetchLocations(data.access_token)
       setGoogleSub('success')
     } catch { setError('Could not reach the server.'); setGoogleSub('idle') }
@@ -198,7 +206,7 @@ export default function App() {
             </>
           )}
 
-          {metaSub === 'loading' && <p className="hint">Connecting to Facebook...</p>}
+          {metaSub === 'loading' && <p className="hint">{metaMsg || 'Connecting to Facebook...'}</p>}
 
           {metaSub === 'success' && (
             <>
@@ -271,7 +279,7 @@ export default function App() {
             </>
           )}
 
-          {googleSub === 'loading' && <p className="hint">Connecting to Google...</p>}
+          {googleSub === 'loading' && <p className="hint">{googleMsg || 'Connecting to Google...'}</p>}
 
           {googleSub === 'success' && (
             <>
