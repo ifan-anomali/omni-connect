@@ -62,8 +62,9 @@ h1 {
 
 .platform-card:hover { border-color: #bbb; background: #fafafa; }
 
-.platform-meta   { border-left: 3px solid #1877F2; }
-.platform-google { border-left: 3px solid #4285F4; }
+.platform-meta     { border-left: 3px solid #1877F2; }
+.platform-google   { border-left: 3px solid #4285F4; }
+.platform-linkedin { border-left: 3px solid #0A66C2; }
 
 .platform-card-left {
   display: flex;
@@ -96,6 +97,15 @@ h1 {
   font-family: Arial, sans-serif;
   font-size: 17px;
   border: 1.5px solid #e0e0e0;
+}
+
+.platform-icon-linkedin {
+  background: #0A66C2;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
 }
 
 .platform-name   { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
@@ -165,6 +175,33 @@ h1 {
   line-height: 1;
   font-family: Arial, sans-serif;
   color: #4285F4;
+}
+
+.btn-linkedin {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 18px;
+  background: #0A66C2;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  margin-bottom: 12px;
+}
+.btn-linkedin:hover { opacity: 0.88; }
+.btn-linkedin:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.linkedin-in {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  font-family: Arial, sans-serif;
+  letter-spacing: -0.5px;
 }
 
 .btn-primary {

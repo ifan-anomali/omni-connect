@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 const API_URL = import.meta.env.VITE_API_URL || 'https://dev-api.omni7.io'
 
 export default function App() {
-  // home | meta | google
+  // home | meta | google | linkedin
   const [screen, setScreen]           = useState('loading')
   const [error, setError]             = useState('')
 
@@ -25,6 +25,15 @@ export default function App() {
   const [locationError, setLocationError] = useState('')
   const [syncingGoogle, setSyncingGoogle] = useState(false)
 
+  // ── LinkedIn ───────────────────────────────────────────────────────────────
+  // idle | loading | success
+  const [linkedinSub, setLinkedinSub]     = useState('idle')
+  const [linkedinMsg, setLinkedinMsg]     = useState('')
+  const [linkedinUser, setLinkedinUser]   = useState(null)   // { access_token, name, email }
+  const [linkedinPages, setLinkedinPages] = useState([])
+  const [linkedinError, setLinkedinError] = useState('')
+  const [syncingLinkedin, setSyncingLinkedin] = useState(false)
+
   // ── Boot ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const params   = new URLSearchParams(window.location.search)
@@ -39,6 +48,14 @@ export default function App() {
       if (oauthErr) { setError('Google authorisation was cancelled.'); setGoogleSub('idle'); return }
       if (code) { setGoogleSub('loading'); handleGoogleCallback(code); return }
       setGoogleSub('idle')
+      return
+    }
+
+    if (provider === 'linkedin') {
+      setScreen('linkedin')
+      if (oauthErr) { setError('LinkedIn authorisation was cancelled.'); setLinkedinSub('idle'); return }
+      if (code) { setLinkedinSub('loading'); handleLinkedInCallback(code); return }
+      setLinkedinSub('idle')
       return
     }
 
@@ -149,11 +166,62 @@ export default function App() {
     setSyncingGoogle(false)
   }
 
+  // ── LinkedIn OAuth ─────────────────────────────────────────────────────────
+
+  async function handleLinkedInConnect() {
+    setLinkedinSub('loading')
+    setLinkedinMsg('Connecting to LinkedIn...')
+    setError('')
+    try {
+      const res = await fetch(`${API_URL}/api/v0/connect/user/linkedin`, { method: 'POST' })
+      if (!res.ok) { setError('Something went wrong. Please try again.'); setLinkedinSub('idle'); return }
+      const data = await res.json()
+      window.location.href = data.url
+    } catch { setError('Could not reach the server.'); setLinkedinSub('idle') }
+  }
+
+  async function handleLinkedInCallback(code) {
+    setLinkedinMsg('Verifying with LinkedIn...')
+    try {
+      const res  = await fetch(
+        `${API_URL}/api/v0/connect/linkedin/user/detail?token=${encodeURIComponent(code)}`,
+        { method: 'POST' }
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setError(data?.message || 'Something went wrong.'); setLinkedinSub('idle'); return }
+
+      setLinkedinUser(data)
+      setLinkedinMsg('Please wait, we are getting all your LinkedIn Pages...')
+      await fetchLinkedInPages(data.access_token)
+      setLinkedinSub('success')
+    } catch { setError('Could not reach the server.'); setLinkedinSub('idle') }
+  }
+
+  async function fetchLinkedInPages(accessToken) {
+    setSyncingLinkedin(true)
+    setLinkedinError('')
+    try {
+      const res  = await fetch(
+        `${API_URL}/api/v0/connect/linkedin/account?token=${encodeURIComponent(accessToken)}`,
+        { method: 'POST' }
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setLinkedinError(data?.message || 'Could not load LinkedIn Pages.')
+      } else {
+        setLinkedinPages(data.accounts || [])
+        if ((data.accounts || []).length === 0) setLinkedinError('No LinkedIn Pages found on this account.')
+      }
+    } catch { setLinkedinError('Could not reach the server.') }
+    setSyncingLinkedin(false)
+  }
+
   // ── Navigation ────────────────────────────────────────────────────────────
 
-  function goHome()     { setError(''); setScreen('home') }
-  function openMeta()   { setError(''); setScreen('meta') }
-  function openGoogle() { setError(''); setScreen('google') }
+  function goHome()        { setError(''); setScreen('home') }
+  function openMeta()      { setError(''); setScreen('meta') }
+  function openGoogle()    { setError(''); setScreen('google') }
+  function openLinkedIn()  { setError(''); setScreen('linkedin') }
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -185,6 +253,16 @@ export default function App() {
               <div>
                 <p className="platform-name">Google Business Profile</p>
                 <p className="platform-detail">Connect your locations</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="platform-card platform-linkedin" onClick={openLinkedIn}>
+            <div className="platform-card-left">
+              <div className="platform-icon platform-icon-linkedin">in</div>
+              <div>
+                <p className="platform-name">LinkedIn</p>
+                <p className="platform-detail">Connect your company pages</p>
               </div>
             </div>
           </div>
@@ -321,6 +399,84 @@ export default function App() {
 
               <button className="btn-text" onClick={goHome}>Back</button>
               <button className="btn-text" onClick={() => { setGoogleSub('idle'); setLocations([]); setGoogleUser(null) }}>
+                Connect another account
+              </button>
+            </>
+          )}
+        </>
+      )}
+
+      {/* ────────────────────── LinkedIn ────────────────────── */}
+      {screen === 'linkedin' && (
+        <>
+          {linkedinSub === 'idle' && (
+            <>
+              <h1>Connect LinkedIn</h1>
+              <p className="sub" style={{ marginBottom: 24, fontSize: 13, color: '#888' }}>
+                Connect your LinkedIn Company Pages to manage posts and engagement.
+              </p>
+              {error && <p className="err">{error}</p>}
+              <button className="btn-linkedin" onClick={handleLinkedInConnect}>
+                <span className="linkedin-in">in</span>
+                Continue with LinkedIn
+              </button>
+              <button className="btn-back" onClick={goHome}>← Back</button>
+            </>
+          )}
+
+          {linkedinSub === 'loading' && <p className="hint">{linkedinMsg || 'Connecting to LinkedIn...'}</p>}
+
+          {linkedinSub === 'success' && (
+            <>
+              <h1>LinkedIn connected</h1>
+              {(linkedinUser?.name || linkedinUser?.email) && (
+                <p className="sub">Signed in as <strong>{linkedinUser.name || linkedinUser.email}</strong></p>
+              )}
+
+              {syncingLinkedin && <p className="hint">Loading LinkedIn Pages...</p>}
+
+              {!syncingLinkedin && linkedinPages.length > 0 && (
+                <ul className="page-list">
+                  {linkedinPages.map(p => (
+                    <li key={p.account_id} className="page-item">
+                      <div className="page-row">
+                        <div className="page-info">
+                          <span className="page-name">{p.account_name}</span>
+                          <span className="page-platform">LinkedIn</span>
+                        </div>
+                      </div>
+                      {p.vanity_name && (
+                        <div className="page-token-row" style={{ marginTop: 4 }}>
+                          <span className="page-token" style={{ color: '#888' }}>@{p.vanity_name}</span>
+                        </div>
+                      )}
+                      <div className="page-token-row" style={{ marginTop: 4 }}>
+                        <span className="page-token" style={{ color: '#888' }}>ID: {p.account_id}</span>
+                        <button className="btn-copy" onClick={() => navigator.clipboard.writeText(p.account_id)}>
+                          Copy
+                        </button>
+                      </div>
+                      <div className="page-token-row" style={{ marginTop: 4 }}>
+                        <span className="page-token">{linkedinUser?.access_token}</span>
+                        <button className="btn-copy" onClick={() => navigator.clipboard.writeText(linkedinUser?.access_token)}>
+                          Copy token
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {!syncingLinkedin && linkedinError && <p className="err" style={{ marginTop: 12 }}>{linkedinError}</p>}
+
+              {!syncingLinkedin && linkedinUser?.access_token && (
+                <button className="btn-text" onClick={() => fetchLinkedInPages(linkedinUser.access_token)}>
+                  Resync pages
+                </button>
+              )}
+
+              <button className="btn-text" onClick={goHome}>Back</button>
+              <button className="btn-text" onClick={() => { setLinkedinSub('idle'); setLinkedinPages([]); setLinkedinUser(null) }}>
                 Connect another account
               </button>
             </>
