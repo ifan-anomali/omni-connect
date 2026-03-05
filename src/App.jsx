@@ -2,37 +2,57 @@ import { useState, useEffect } from 'react'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://dev-api.omni7.io'
 
+// ── PKCE helpers (required by X OAuth 2.0) ────────────────────────────────
+function generateCodeVerifier() {
+  const array = new Uint8Array(32)
+  crypto.getRandomValues(array)
+  return btoa(String.fromCharCode(...array))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+}
+
+async function generateCodeChallenge(verifier) {
+  const data   = new TextEncoder().encode(verifier)
+  const digest = await crypto.subtle.digest('SHA-256', data)
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+}
+
+const X_VERIFIER_KEY = 'omni_x_code_verifier'
+
 export default function App() {
-  // home | meta | google | linkedin
+  // home | meta | google | linkedin | x
   const [screen, setScreen]           = useState('loading')
   const [error, setError]             = useState('')
 
   // ── Meta ──────────────────────────────────────────────────────────────────
-  // idle | loading | success
   const [metaSub, setMetaSub]         = useState('idle')
   const [metaMsg, setMetaMsg]         = useState('')
-  const [metaUser, setMetaUser]       = useState(null)   // { user_token, meta_user_name }
+  const [metaUser, setMetaUser]       = useState(null)
   const [pages, setPages]             = useState([])
   const [pageError, setPageError]     = useState('')
   const [syncing, setSyncing]         = useState(false)
 
   // ── Google ────────────────────────────────────────────────────────────────
-  // idle | loading | success
   const [googleSub, setGoogleSub]     = useState('idle')
   const [googleMsg, setGoogleMsg]     = useState('')
-  const [googleUser, setGoogleUser]   = useState(null)   // { access_token, email }
+  const [googleUser, setGoogleUser]   = useState(null)
   const [locations, setLocations]     = useState([])
   const [locationError, setLocationError] = useState('')
   const [syncingGoogle, setSyncingGoogle] = useState(false)
 
   // ── LinkedIn ───────────────────────────────────────────────────────────────
-  // idle | loading | success
   const [linkedinSub, setLinkedinSub]     = useState('idle')
   const [linkedinMsg, setLinkedinMsg]     = useState('')
-  const [linkedinUser, setLinkedinUser]   = useState(null)   // { access_token, name, email }
+  const [linkedinUser, setLinkedinUser]   = useState(null)
   const [linkedinPages, setLinkedinPages] = useState([])
   const [linkedinError, setLinkedinError] = useState('')
   const [syncingLinkedin, setSyncingLinkedin] = useState(false)
+
+  // ── X ─────────────────────────────────────────────────────────────────────
+  const [xSub, setXSub]               = useState('idle')
+  const [xMsg, setXMsg]               = useState('')
+  const [xUser, setXUser]             = useState(null)
+  const [xError, setXError]           = useState('')
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -59,8 +79,31 @@ export default function App() {
       return
     }
 
-    if (oauthErr) { setScreen('meta'); setError('Authorisation was cancelled.'); setMetaSub('idle'); return }
+    if (provider === 'x') {
+      setScreen('x')
+      if (oauthErr) {
+        sessionStorage.removeItem(X_VERIFIER_KEY)
+        setError('X authorisation was cancelled.')
+        setXSub('idle')
+        return
+      }
+      if (code) {
+        const verifier = sessionStorage.getItem(X_VERIFIER_KEY)
+        sessionStorage.removeItem(X_VERIFIER_KEY)
+        if (!verifier) {
+          setError('PKCE session expired. Please try connecting again.')
+          setXSub('idle')
+          return
+        }
+        setXSub('loading')
+        handleXCallback(code, verifier)
+        return
+      }
+      setXSub('idle')
+      return
+    }
 
+    if (oauthErr) { setScreen('meta'); setError('Authorisation was cancelled.'); setMetaSub('idle'); return }
     if (code) { setScreen('meta'); setMetaSub('loading'); handleMetaCallback(code); return }
 
     setScreen('home')
@@ -89,7 +132,6 @@ export default function App() {
       )
       const data = await res.json().catch(() => ({}))
       if (!res.ok) { setError(data?.message || 'Something went wrong.'); setMetaSub('idle'); return }
-
       setMetaUser(data)
       setMetaMsg('Please wait, we are getting all your pages...')
       await fetchPages(data.user_token)
@@ -139,7 +181,6 @@ export default function App() {
       )
       const data = await res.json().catch(() => ({}))
       if (!res.ok) { setError(data?.message || 'Something went wrong.'); setGoogleSub('idle'); return }
-
       setGoogleUser(data)
       setGoogleMsg('Please wait, we are getting all your locations...')
       await fetchLocations(data.access_token)
@@ -189,7 +230,6 @@ export default function App() {
       )
       const data = await res.json().catch(() => ({}))
       if (!res.ok) { setError(data?.message || 'Something went wrong.'); setLinkedinSub('idle'); return }
-
       setLinkedinUser(data)
       setLinkedinMsg('Please wait, we are getting all your LinkedIn Pages...')
       await fetchLinkedInPages(data.access_token)
@@ -216,12 +256,62 @@ export default function App() {
     setSyncingLinkedin(false)
   }
 
+  // ── X OAuth ───────────────────────────────────────────────────────────────
+
+  async function handleXConnect() {
+    setXSub('loading')
+    setXMsg('Preparing secure connection...')
+    setError('')
+    try {
+      // Generate PKCE pair client-side (required by X)
+      const verifier   = generateCodeVerifier()
+      const challenge  = await generateCodeChallenge(verifier)
+
+      // Persist verifier in sessionStorage — survives the OAuth redirect within same tab
+      sessionStorage.setItem(X_VERIFIER_KEY, verifier)
+
+      const res = await fetch(
+        `${API_URL}/api/v0/connect/user/x?code_challenge=${encodeURIComponent(challenge)}`,
+        { method: 'POST' }
+      )
+      if (!res.ok) {
+        sessionStorage.removeItem(X_VERIFIER_KEY)
+        setError('Something went wrong. Please try again.')
+        setXSub('idle')
+        return
+      }
+      const data = await res.json()
+      window.location.href = data.url
+    } catch {
+      sessionStorage.removeItem(X_VERIFIER_KEY)
+      setError('Could not reach the server.')
+      setXSub('idle')
+    }
+  }
+
+  async function handleXCallback(code, verifier) {
+    setXMsg('Verifying with X...')
+    try {
+      const res = await fetch(
+        `${API_URL}/api/v0/connect/x/user/detail` +
+          `?token=${encodeURIComponent(code)}` +
+          `&code_verifier=${encodeURIComponent(verifier)}`,
+        { method: 'POST' }
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setError(data?.message || 'Something went wrong.'); setXSub('idle'); return }
+      setXUser(data)
+      setXSub('success')
+    } catch { setError('Could not reach the server.'); setXSub('idle') }
+  }
+
   // ── Navigation ────────────────────────────────────────────────────────────
 
   function goHome()        { setError(''); setScreen('home') }
   function openMeta()      { setError(''); setScreen('meta') }
   function openGoogle()    { setError(''); setScreen('google') }
   function openLinkedIn()  { setError(''); setScreen('linkedin') }
+  function openX()         { setError(''); setScreen('x') }
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -266,6 +356,16 @@ export default function App() {
               </div>
             </div>
           </div>
+
+          <div className="platform-card platform-x" onClick={openX}>
+            <div className="platform-card-left">
+              <div className="platform-icon platform-icon-x">𝕏</div>
+              <div>
+                <p className="platform-name">X (Twitter)</p>
+                <p className="platform-detail">Connect your account</p>
+              </div>
+            </div>
+          </div>
         </>
       )}
 
@@ -292,9 +392,7 @@ export default function App() {
               {metaUser?.meta_user_name && (
                 <p className="sub">Logged in as <strong>{metaUser.meta_user_name}</strong></p>
               )}
-
               {syncing && <p className="hint">Loading pages...</p>}
-
               {!syncing && pages.length > 0 && (
                 <ul className="page-list">
                   {pages.map(p => (
@@ -307,29 +405,20 @@ export default function App() {
                       </div>
                       <div className="page-token-row">
                         <span className="page-token">{p.account_token}</span>
-                        <button className="btn-copy" onClick={() => navigator.clipboard.writeText(p.account_token)}>
-                          Copy
-                        </button>
+                        <button className="btn-copy" onClick={() => navigator.clipboard.writeText(p.account_token)}>Copy</button>
                       </div>
                       <div className="page-token-row" style={{ marginTop: 4 }}>
                         <span className="page-token" style={{ color: '#888' }}>ID: {p.account_id}</span>
-                        <button className="btn-copy" onClick={() => navigator.clipboard.writeText(p.account_id)}>
-                          Copy
-                        </button>
+                        <button className="btn-copy" onClick={() => navigator.clipboard.writeText(p.account_id)}>Copy</button>
                       </div>
                     </li>
                   ))}
                 </ul>
               )}
-
               {!syncing && pageError && <p className="err" style={{ marginTop: 12 }}>{pageError}</p>}
-
               {!syncing && metaUser?.user_token && (
-                <button className="btn-text" onClick={() => fetchPages(metaUser.user_token)}>
-                  Resync pages
-                </button>
+                <button className="btn-text" onClick={() => fetchPages(metaUser.user_token)}>Resync pages</button>
               )}
-
               <button className="btn-text" onClick={goHome}>Back</button>
               <button className="btn-text" onClick={() => { setMetaSub('idle'); setPages([]); setMetaUser(null) }}>
                 Connect another account
@@ -365,9 +454,7 @@ export default function App() {
               {googleUser?.email && (
                 <p className="sub">Signed in as <strong>{googleUser.email}</strong></p>
               )}
-
               {syncingGoogle && <p className="hint">Loading locations...</p>}
-
               {!syncingGoogle && locations.length > 0 && (
                 <ul className="page-list">
                   {locations.map(loc => (
@@ -380,23 +467,16 @@ export default function App() {
                       </div>
                       <div className="page-token-row" style={{ marginTop: 4 }}>
                         <span className="page-token" style={{ color: '#888' }}>ID: {loc.account_id}</span>
-                        <button className="btn-copy" onClick={() => navigator.clipboard.writeText(loc.account_id)}>
-                          Copy
-                        </button>
+                        <button className="btn-copy" onClick={() => navigator.clipboard.writeText(loc.account_id)}>Copy</button>
                       </div>
                     </li>
                   ))}
                 </ul>
               )}
-
               {!syncingGoogle && locationError && <p className="err" style={{ marginTop: 12 }}>{locationError}</p>}
-
               {!syncingGoogle && googleUser?.access_token && (
-                <button className="btn-text" onClick={() => fetchLocations(googleUser.access_token)}>
-                  Resync locations
-                </button>
+                <button className="btn-text" onClick={() => fetchLocations(googleUser.access_token)}>Resync locations</button>
               )}
-
               <button className="btn-text" onClick={goHome}>Back</button>
               <button className="btn-text" onClick={() => { setGoogleSub('idle'); setLocations([]); setGoogleUser(null) }}>
                 Connect another account
@@ -432,9 +512,7 @@ export default function App() {
               {(linkedinUser?.name || linkedinUser?.email) && (
                 <p className="sub">Signed in as <strong>{linkedinUser.name || linkedinUser.email}</strong></p>
               )}
-
               {syncingLinkedin && <p className="hint">Loading LinkedIn Pages...</p>}
-
               {!syncingLinkedin && linkedinPages.length > 0 && (
                 <ul className="page-list">
                   {linkedinPages.map(p => (
@@ -452,31 +530,101 @@ export default function App() {
                       )}
                       <div className="page-token-row" style={{ marginTop: 4 }}>
                         <span className="page-token" style={{ color: '#888' }}>ID: {p.account_id}</span>
-                        <button className="btn-copy" onClick={() => navigator.clipboard.writeText(p.account_id)}>
-                          Copy
-                        </button>
+                        <button className="btn-copy" onClick={() => navigator.clipboard.writeText(p.account_id)}>Copy</button>
                       </div>
                       <div className="page-token-row" style={{ marginTop: 4 }}>
                         <span className="page-token">{linkedinUser?.access_token}</span>
-                        <button className="btn-copy" onClick={() => navigator.clipboard.writeText(linkedinUser?.access_token)}>
-                          Copy token
-                        </button>
+                        <button className="btn-copy" onClick={() => navigator.clipboard.writeText(linkedinUser?.access_token)}>Copy token</button>
                       </div>
                     </li>
                   ))}
                 </ul>
               )}
-
               {!syncingLinkedin && linkedinError && <p className="err" style={{ marginTop: 12 }}>{linkedinError}</p>}
-
               {!syncingLinkedin && linkedinUser?.access_token && (
-                <button className="btn-text" onClick={() => fetchLinkedInPages(linkedinUser.access_token)}>
-                  Resync pages
-                </button>
+                <button className="btn-text" onClick={() => fetchLinkedInPages(linkedinUser.access_token)}>Resync pages</button>
               )}
-
               <button className="btn-text" onClick={goHome}>Back</button>
               <button className="btn-text" onClick={() => { setLinkedinSub('idle'); setLinkedinPages([]); setLinkedinUser(null) }}>
+                Connect another account
+              </button>
+            </>
+          )}
+        </>
+      )}
+
+      {/* ────────────────────── X ────────────────────── */}
+      {screen === 'x' && (
+        <>
+          {xSub === 'idle' && (
+            <>
+              <h1>Connect X</h1>
+              <p className="sub" style={{ marginBottom: 24, fontSize: 13, color: '#888' }}>
+                Connect your X account to manage posts and engagement.
+              </p>
+              {error && <p className="err">{error}</p>}
+              <button className="btn-x" onClick={handleXConnect}>
+                <span className="x-logo">𝕏</span>
+                Continue with X
+              </button>
+              <button className="btn-back" onClick={goHome}>← Back</button>
+            </>
+          )}
+
+          {xSub === 'loading' && <p className="hint">{xMsg || 'Connecting to X...'}</p>}
+
+          {xSub === 'success' && (
+            <>
+              <h1>X connected</h1>
+              {(xUser?.name || xUser?.username) && (
+                <p className="sub">
+                  Signed in as <strong>{xUser.name || xUser.username}</strong>
+                  {xUser?.username && xUser?.name && <span style={{ color: '#888', fontWeight: 400 }}> @{xUser.username}</span>}
+                </p>
+              )}
+              {xUser?.followers_count != null && (
+                <p style={{ fontSize: 13, color: '#888', marginBottom: 16 }}>
+                  {xUser.followers_count.toLocaleString()} followers
+                </p>
+              )}
+
+              <ul className="page-list">
+                <li className="page-item">
+                  <div className="page-row">
+                    <div className="page-info">
+                      <span className="page-name">{xUser?.name || xUser?.username}</span>
+                      <span className="page-platform">X</span>
+                    </div>
+                  </div>
+                  {xUser?.username && (
+                    <div className="page-token-row" style={{ marginTop: 4 }}>
+                      <span className="page-token" style={{ color: '#888' }}>@{xUser.username}</span>
+                      <button className="btn-copy" onClick={() => navigator.clipboard.writeText(xUser.username)}>Copy</button>
+                    </div>
+                  )}
+                  {xUser?.x_user_id && (
+                    <div className="page-token-row" style={{ marginTop: 4 }}>
+                      <span className="page-token" style={{ color: '#888' }}>ID: {xUser.x_user_id}</span>
+                      <button className="btn-copy" onClick={() => navigator.clipboard.writeText(xUser.x_user_id)}>Copy</button>
+                    </div>
+                  )}
+                  <div className="page-token-row" style={{ marginTop: 4 }}>
+                    <span className="page-token">{xUser?.access_token}</span>
+                    <button className="btn-copy" onClick={() => navigator.clipboard.writeText(xUser?.access_token)}>Copy token</button>
+                  </div>
+                  {xUser?.refresh_token && (
+                    <div className="page-token-row" style={{ marginTop: 4 }}>
+                      <span className="page-token" style={{ color: '#aaa' }}>Refresh: {xUser.refresh_token}</span>
+                      <button className="btn-copy" onClick={() => navigator.clipboard.writeText(xUser.refresh_token)}>Copy</button>
+                    </div>
+                  )}
+                </li>
+              </ul>
+
+              {xError && <p className="err" style={{ marginTop: 12 }}>{xError}</p>}
+
+              <button className="btn-text" onClick={goHome}>Back</button>
+              <button className="btn-text" onClick={() => { setXSub('idle'); setXUser(null); setXError('') }}>
                 Connect another account
               </button>
             </>

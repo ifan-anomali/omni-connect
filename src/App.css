@@ -65,6 +65,7 @@ h1 {
 .platform-meta     { border-left: 3px solid #1877F2; }
 .platform-google   { border-left: 3px solid #4285F4; }
 .platform-linkedin { border-left: 3px solid #0A66C2; }
+.platform-x        { border-left: 3px solid #000; }
 
 .platform-card-left {
   display: flex;
@@ -106,6 +107,13 @@ h1 {
   font-size: 13px;
   font-weight: 800;
   letter-spacing: -0.5px;
+}
+
+.platform-icon-x {
+  background: #000;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
 }
 
 .platform-name   { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
@@ -202,6 +210,31 @@ h1 {
   line-height: 1;
   font-family: Arial, sans-serif;
   letter-spacing: -0.5px;
+}
+
+.btn-x {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 18px;
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  margin-bottom: 12px;
+}
+.btn-x:hover { opacity: 0.82; }
+.btn-x:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.x-logo {
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .btn-primary {
