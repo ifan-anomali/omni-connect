@@ -451,9 +451,37 @@ export default function App() {
           {googleSub === 'success' && (
             <>
               <h1>Google connected</h1>
-              {googleUser?.email && (
-                <p className="sub">Signed in as <strong>{googleUser.email}</strong></p>
+              {googleUser && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                  {googleUser.picture && (
+                    <img src={googleUser.picture} alt="" style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0 }} />
+                  )}
+                  <div>
+                    {googleUser.name  && <p style={{ fontWeight: 600, fontSize: 15 }}>{googleUser.name}</p>}
+                    {googleUser.email && <p style={{ fontSize: 13, color: '#888' }}>{googleUser.email}</p>}
+                  </div>
+                </div>
               )}
+
+              <ul className="page-list" style={{ marginBottom: 16 }}>
+                {googleUser?.google_user_id && (
+                  <li className="page-item">
+                    <div className="page-token-row">
+                      <span className="page-token" style={{ color: '#888' }}>User ID: {googleUser.google_user_id}</span>
+                      <button className="btn-copy" onClick={() => navigator.clipboard.writeText(googleUser.google_user_id)}>Copy</button>
+                    </div>
+                  </li>
+                )}
+                {googleUser?.access_token && (
+                  <li className="page-item">
+                    <div className="page-token-row">
+                      <span className="page-token">Access token: {googleUser.access_token}</span>
+                      <button className="btn-copy" onClick={() => navigator.clipboard.writeText(googleUser.access_token)}>Copy</button>
+                    </div>
+                  </li>
+                )}
+              </ul>
+
               {syncingGoogle && <p className="hint">Loading locations...</p>}
               {!syncingGoogle && locations.length > 0 && (
                 <ul className="page-list">
